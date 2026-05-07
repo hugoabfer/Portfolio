@@ -30,18 +30,16 @@ wh=datos_raw.z[, "R_WH", drop=FALSE]
 uno = itf-itf+1
 
 ## GRÁFICOS###
-# Divide la ventana en 2 filas y 2 columnas
+
 par(mfrow = c(2, 2))
 
-# Dibujas tus 3 gráficos
 plot(itf, main = "R_ERIX", col = "blue")
 plot(erix, main = "R_ITF", col = "blue")
 plot(wh, main = "R_WH", col = "blue")
 
-# Restaurar la vista normal de R cuando termines
 par(mfrow = c(1, 1))
 
-# 2. ESPECIFICACIÓN DE LOS MODELOS UNIVARIANTES (Dejamos que R estime)
+# 2. ESPECIFICACIÓN DE LOS MODELOS UNIVARIANTES 
 spec_ITF <- ugarchspec(
   mean.model = list(armaOrder = c(1,0), include.mean = TRUE),
   variance.model = list(model = "sGARCH", garchOrder = c(1,1)), 
@@ -68,15 +66,6 @@ spec_WH <- ugarchspec(
 ############ MODELO 1 #####################3
 y.ret=merge(itf,erix)
 
-# dcc specification - GARCH(1,1) for conditional correlations
-  #dcc1.spec = ugarchspec(mean.model = list(armaOrder = c(1,0)), 
-                         # variance.model = list(garchOrder = c(1,1), 
-                                                #model = "sGARCH"), 
-                          #distribution.model = "std")
-
-#dcc1.garch11.spec = dccspec(uspec = multispec( replicate(2, garch11.spec) ), 
-                           # dccOrder = c(1,1), 
-                           # distribution = "mvt")
 uspec_mod1 <- multispec(c(spec_ITF, spec_ERIX))
 
 dcc1.garch11.spec = dccspec(uspec = uspec_mod1,
@@ -106,27 +95,11 @@ head(beta_dcc1_12)
 rcbeta_dcc1_12 = y.ret[,1] - beta_dcc1_12 * y.ret[,2]
 ec_dcc1_12 = ( var(y.ret[,1]) - var(rcbeta_dcc1_12) ) / var(y.ret[,1])
 ec_dcc1_12 
-#-------
-#HDCC1.11=rcov(dcc1.fit)[1,1,]
-#View(HDCC1.11)
-#Hdcc1a.11=dcc1a.fit@mfit$H[1,1,]
-#head(Hdcc1a,10)
-## in sample hedge
-
 
 
 ################### MODELO 2 ###################
 
 y.ret_2 = merge(itf, wh)
-
-#garch11.spec_2 <- ugarchspec(mean.model = list(armaOrder = c(1,0)),
-                             #variance.model = list(garchOrder = c(1,2),
-                                                   #model = "sGARCH"),
-                             #distribution.model = "std")
-
-#dcc2.garch11.spec_2 = dccspec(uspec = multispec( replicate(2, garch11.spec_2)),
-                            #dccOrder = c(1,1),
-                            #distribution = "mvt")
 
 uspec_mod2  <- multispec(c(spec_ITF, spec_WH))
 dcc2.garch11.spec_2 = dccspec(uspec = uspec_mod2,
@@ -138,7 +111,6 @@ dcc2.fit = dccfit(dcc2.garch11.spec_2, data = y.ret_2, cluster = cl)
 stopCluster(cl)
 dcc2.fit
 DCC2rho12 = rcor(dcc2.fit)[1,2,]*uno
-#---------------------------
 
 Hdcc2=dcc2.fit@mfit$H #esto es un array
 h_dcc2_11=rcov(dcc2.fit)[1,1,]*uno
@@ -155,10 +127,9 @@ head(beta_dcc2_12)
 rcbeta_dcc2_12 = y.ret_2[,1] - beta_dcc2_12 * y.ret_2[,2]
 ec_dcc2_12 = ( var(y.ret_2[,1]) - var(rcbeta_dcc2_12) ) / var(y.ret_2[,1])
 ec_dcc2_12 
-# =============================================================
-# APARTADO 3.2: PONDERACIONES, RATIOS Y EFECTIVIDAD
-# =============================================================
 
+
+# PONDERACIONES, RATIOS Y EFECTIVIDAD
 calcular_metricas_32 <- function(fit, returns_data) {
   # Extraer Varianzas y Covarianzas
   h11 <- rcov(fit)[1,1,] # Var Activo 1 (ITF)
@@ -201,18 +172,18 @@ rbind(Peso_ITF = resumen_stats(met_m2$w),
 
 print("--- EFECTIVIDAD COBERTURA (HE) ---")
 cat("Modelo 1:", met_m1$he, "\nModelo 2:", met_m2$he)
-# =========================================================
-# GRÁFICO 3.2.A: PONDERACIONES ÓPTIMAS (w*) - CORREGIDO
-# =========================================================
 
-# 1. Calculamos y USAMOS TU TRUCO '* uno' PARA DEVOLVERLE LAS FECHAS
+
+# GRÁFICO PONDERACIONES ÓPTIMAS (w*) 
+
+# 1. Calculamos
 w_m1_raw <- (rcov(dcc1.fit)[2,2,] - rcov(dcc1.fit)[1,2,]) / (rcov(dcc1.fit)[1,1,] - 2*rcov(dcc1.fit)[1,2,] + rcov(dcc1.fit)[2,2,])
 w_m1 <- pmin(pmax(w_m1_raw, 0), 1) * uno 
 
 w_m2_raw <- (rcov(dcc2.fit)[2,2,] - rcov(dcc2.fit)[1,2,]) / (rcov(dcc2.fit)[1,1,] - 2*rcov(dcc2.fit)[1,2,] + rcov(dcc2.fit)[2,2,])
 w_m2 <- pmin(pmax(w_m2_raw, 0), 1) * uno
 
-# 2. Convertimos a zoo y limpiamos las horas ocultas
+# 2. Convertimos a zoo 
 w_zoo1 <- as.zoo(w_m1)
 w_zoo2 <- as.zoo(w_m2)
 index(w_zoo1) <- as.Date(index(w_zoo1))
@@ -225,7 +196,7 @@ w_zoo1 <- window(w_zoo1, start = fecha_inicio, end = fecha_fin)
 w_zoo2 <- window(w_zoo2, start = fecha_inicio, end = fecha_fin)
 w_ambas <- merge(w_zoo1, w_zoo2)
 
-# 4. Dibujamos la cuadrícula 2x2
+# 4. 
 par(mfrow = c(2, 2), mar = c(3, 3, 3, 1))
 
 plot(w_zoo1, main = "Peso Óptimo ITF (ITF / ERIX)", 
@@ -246,26 +217,25 @@ legend("center", legend = c("ITF / ERIX", "ITF / WH"),
 
 par(mfrow = c(1, 1))
 
-# =========================================================
-# GRÁFICO 3.2.B: RATIOS DE COBERTURA (Beta*) - CORREGIDO
-# =========================================================
+#
+# GRÁFICO 3 RATIOS DE COBERTURA (Beta*) 
 
-# 1. Calculamos las Betas añadiendo el '* uno'
+# 1. Calculamos las Betas
 beta_m1 <- (rcov(dcc1.fit)[1,2,] / rcov(dcc1.fit)[2,2,]) * uno
 beta_m2 <- (rcov(dcc2.fit)[1,2,] / rcov(dcc2.fit)[2,2,]) * uno
 
-# 2. Convertimos a zoo y limpiamos horas ocultas
+# 2.
 beta_zoo1 <- as.zoo(beta_m1)
 beta_zoo2 <- as.zoo(beta_m2)
 index(beta_zoo1) <- as.Date(index(beta_zoo1))
 index(beta_zoo2) <- as.Date(index(beta_zoo2))
 
-# 3. Recortamos a tus fechas
+# 3. Recortamos a fechas
 beta_zoo1 <- window(beta_zoo1, start = fecha_inicio, end = fecha_fin)
 beta_zoo2 <- window(beta_zoo2, start = fecha_inicio, end = fecha_fin)
 beta_ambas <- merge(beta_zoo1, beta_zoo2)
 
-# 4. Dibujamos la cuadrícula 2x2
+# 4. 
 par(mfrow = c(2, 2), mar = c(3, 3, 3, 1))
 
 plot(beta_zoo1, main = "Ratio de Cobertura Beta* (ITF / ERIX)", 
@@ -286,9 +256,8 @@ legend("center", legend = c("ITF / ERIX", "ITF / WH"),
 
 par(mfrow = c(1, 1))
 
-# =========================================================
+
 # GRÁFICOS DE CORRELACIÓN CONDICIONAL (FORMATO 2x2 CON LÍMITES DE FECHAS)
-# =========================================================
 
 # 1. Definimos los límites exactos del gráfico (Formato AÑO-MES-DÍA)
 limites_fecha <- as.Date(c("2017-09-19", "2025-11-03"))
@@ -322,7 +291,7 @@ plot(cor_ambas, screens = 1, main = "Comparativa",
      xlim = limites_fecha)
 grid(nx = NA, ny = NULL, col = "lightgray", lty = "dotted")
 
-# --- Cuadrante 4 (Abajo Dcha): Leyenda en el hueco vacío ---
+# --- Cuadrante 4 (Abajo Dcha): Leyenda 
 plot.new() 
 legend("center", legend = c("ITF&ERIX", "ITF&WH"), 
        col = c("blue", "red"), lty = 1, lwd = 3, 
@@ -349,7 +318,7 @@ diagnostico_residuos <- function(residuos_serie) {
   cat("---------------------------------------------------\n")
 }
 
-# 3. Aplicamos los tests a las variables que TÚ ya tenías creadas
+# 3. Aplicamos los tests a las variables 
 print("--- DIAGNÓSTICO ITF (MOD 1) ---")
 diagnostico_residuos(stdr1_dcc1)
 
@@ -361,11 +330,10 @@ diagnostico_residuos(stdr1_dcc2)
 
 print("--- DIAGNÓSTICO WH (MOD 2) ---")
 diagnostico_residuos(stdr2_dcc2)
-# =========================================================
-# GRÁFICOS DE AUTOCORRELACIÓN (ACF) DE LOS RESIDUOS
-# =========================================================
 
-# 1. ACF de los Residuos Estandarizados (Comprueba autocorrelación lineal)
+# GRÁFICOS DE AUTOCORRELACIÓN (ACF) DE LOS RESIDUOS
+
+# 1. ACF de los Residuos Estandarizados (autocorrelación lineal)
 par(mfrow = c(2, 2)) # Ventana de 2 filas y 2 columnas
 
 acf(as.numeric(stdr1_dcc1), ylim = c(-0.05,0.05), xlim = c(1, 10), main = "ACF Residuos: ITF (ITF&ERIX)", ylab = "Autocorrelación")
@@ -377,7 +345,6 @@ par(mfrow = c(1, 1)) # Restaurar la vista normal
 
 
 # 2. ACF de los Residuos al Cuadrado (Comprueba volatilidad / Efecto ARCH residual)
-# Ponemos 'Ask = TRUE' para que R espere a que veas el primer gráfico antes de lanzar el segundo
 par(mfrow = c(2, 2))
 
 acf(as.numeric(stdr1_dcc1)^2, ylim = c(-0.05,0.05), xlim = c(1, 10), main = "ACF Residuos al Cuadrado: ITF (ITF&ERIX)", ylab = "Autocorrelación")
@@ -385,11 +352,11 @@ acf(as.numeric(stdr2_dcc1)^2, ylim = c(-0.05,0.05), xlim = c(1, 10),  main = "AC
 acf(as.numeric(stdr1_dcc2)^2, ylim = c(-0.05,0.05), xlim = c(1, 10), main = "ACF Residuos al Cuadrado: ITF (ITF&WH)", ylab = "Autocorrelación")
 acf(as.numeric(stdr2_dcc2)^2, ylim = c(-0.05,0.05), xlim = c(1, 10), main = "ACF Residuos al Cuadrado: WH (ITF&WH)", ylab = "Autocorrelación")
 
-par(mfrow = c(1, 1)) # Restaurar la vista normal
+par(mfrow = c(1, 1)) 
 
 
 #########################
-# 1. Recuperamos tu especificación combinada exacta del Modelo 1
+# 1. Recuperamos  especificación combinada exacta del Modelo 1
 uspec_combinado_1 <- multispec(c(spec_ITF, spec_ERIX))
 dcc1.spec <- dccspec(uspec = uspec_combinado_1, 
                      dccOrder = c(1,1), 
@@ -406,9 +373,8 @@ dcc1.roll <- dccroll(dcc1.spec, data = y.ret, n.ahead = 1,
 # Ver el resumen de la prueba
 show(dcc1.roll)
 
-# ----------------------------------------------------
+
 # EXTRACCIÓN Y GRÁFICO DE LA CORRELACIÓN DINÁMICA
-# ----------------------------------------------------
 
 # Extraemos la correlación predicha por el modelo móvil
 roll_cor_12 = rcor(dcc1.roll)[1,2,]
@@ -416,7 +382,7 @@ roll_cor_12 = rcor(dcc1.roll)[1,2,]
 # Convertimos a serie temporal (xts) para que reconozca bien las fechas
 roll_cor_xts <- as.xts(roll_cor_12)
 
-# ¡HACEMOS EL GRÁFICO PARA TU TFG!
+# GRÁFICO
 plot(roll_cor_xts, 
      main = "Evolución Dinámica de la Correlación (ITF - ERIX)", 
      ylab = "Correlación Condicional Predicha", 
