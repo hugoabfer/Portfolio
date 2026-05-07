@@ -1,0 +1,1 @@
+This repository contains some projects that I´ve been working on during my university degree and my resarch at the University of Santiago de Compostela. It contains both R and python pojects and I´m looking forward to learn C++ to apply the efficiency and velocity to real-time trading projects.
