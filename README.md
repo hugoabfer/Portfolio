@@ -24,5 +24,5 @@ My main focus right now is quantitative modeling, risk management, and portfolio
 
 ## Contact
 Feel free to reach out if you want to chat about quant finance or my projects:
-* **LinkedIn:** [Hugo Abadía Fernández]([https://www.linkedin.com/in/hugo-abadia-fernandez-600163336/])
+* **LinkedIn:** [Hugo Abadía Fernández](https://www.linkedin.com/in/hugo-abadia-fernandez-600163336/)
 * **Email:** [abadiafernandezh@gmail.com](mailto:abadiafernandezh@gmail.com)
