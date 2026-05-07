@@ -1,4 +1,4 @@
-# LIBRERÍAS Y EXTRACCIÓN DE DATOS
+# LIBRERÍAS Y EXTRACCIÓN DE DATOS.
 
 setwd("C:/Users/hugo/OneDrive - Universidade de Santiago de Compostela/TFG")
 WD <- getwd()
